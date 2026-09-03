@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 import DispatchButton from "@/components/dispatch-button";
+import IncidentRealtime from "@/components/incident-realtime";
 
 export default async function ProtectedPage() {
   const supabase = await createClient();
@@ -49,6 +50,8 @@ export default async function ProtectedPage() {
 
   return (
     <main className="flex-1 w-full p-6">
+      <IncidentRealtime />
+      
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold">MiniCAD Dispatcher Dashboard</h1>
