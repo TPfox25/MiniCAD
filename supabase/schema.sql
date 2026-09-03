@@ -281,3 +281,19 @@ using (
 with check (
     user_id = auth.uid()
 );
+
+-- ============================================
+-- 12. REALTIME
+-- ============================================
+
+alter publication supabase_realtime
+add table public.profiles;
+
+alter publication supabase_realtime
+add table public.incidents;
+
+alter publication supabase_realtime
+add table public.incident_reports;
+
+alter table public.incidents
+replica identity full;
