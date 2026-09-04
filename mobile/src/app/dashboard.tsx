@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
 
@@ -18,9 +19,12 @@ type Incident = {
   priority: string;
   description: string;
   status: string;
+  claimed_by?: string | null;
 };
 
 export default function DashboardScreen() {
+  const router = useRouter();
+
   const [onDuty, setOnDuty] = useState(false);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -39,8 +43,14 @@ export default function DashboardScreen() {
           schema: 'public',
           table: 'profiles',
         },
-        (payload) => {
-          setOnDuty(payload.new.on_duty);
+        async (payload) => {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          if (user && payload.new.id === user.id) {
+            setOnDuty(payload.new.on_duty);
+          }
         }
       )
       .subscribe();
@@ -95,12 +105,22 @@ export default function DashboardScreen() {
   }
 
   async function loadIncidents() {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return;
+    }
+
     const { data, error } = await supabase
       .from('incidents')
       .select(
-        'id, caller_name, location, incident_type, priority, description, status'
+        'id, caller_name, location, incident_type, priority, description, status, claimed_by'
       )
-      .eq('status', 'dispatched')
+      .or(`status.eq.dispatched,claimed_by.eq.${user.id}`)
+      .neq('status', 'resolved')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -163,13 +183,34 @@ export default function DashboardScreen() {
       return;
     }
 
-    Alert.alert(
-      'Incident claimed',
-      'You have successfully claimed this incident.'
-    );
+    await loadIncidents();
 
-    loadIncidents();
+    router.push({
+      pathname: '/incident/[id]',
+      params: {
+        id: String(incidentId),
+      },
+    });
   }
+
+  function openIncident(incidentId: number) {
+    router.push({
+      pathname: '/incident/[id]',
+      params: {
+        id: String(incidentId),
+      },
+    });
+  }
+
+  const activeIncidents = incidents.filter(
+    (incident) => incident.claimed_by !== null && incident.claimed_by !== undefined
+  );
+
+  const openIncidents = incidents.filter(
+    (incident) =>
+      incident.status === 'dispatched' &&
+      (incident.claimed_by === null || incident.claimed_by === undefined)
+  );
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -205,20 +246,12 @@ export default function DashboardScreen() {
         )}
       </View>
 
-      <View style={styles.incidentCard}>
-        <Text style={styles.cardTitle}>Open Incidents</Text>
+      {activeIncidents.length > 0 && (
+        <View style={styles.incidentCard}>
+          <Text style={styles.cardTitle}>My Active Incidents</Text>
 
-        {incidents.length === 0 ? (
-          <Text style={styles.cardText}>
-            No incidents have been dispatched yet.
-          </Text>
-        ) : (
-          incidents.map((incident) => (
-            <TouchableOpacity
-              key={incident.id}
-              style={styles.incident}
-              onPress={() => claimIncident(incident.id)}
-            >
+          {activeIncidents.map((incident) => (
+            <View key={incident.id} style={styles.incident}>
               <Text style={styles.incidentType}>
                 {incident.incident_type}
               </Text>
@@ -235,16 +268,71 @@ export default function DashboardScreen() {
                 Caller: {incident.caller_name}
               </Text>
 
+              <Text style={styles.incidentInfo}>
+                Status:{' '}
+                {incident.status.replace('_', ' ').toUpperCase()}
+              </Text>
+
               <Text style={styles.incidentDescription}>
                 {incident.description}
               </Text>
 
-              <View style={styles.claimButton}>
+              <TouchableOpacity
+                style={styles.claimButton}
+                onPress={() => openIncident(incident.id)}
+              >
+                <Text style={styles.claimButtonText}>
+                  Update Status
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <View style={styles.incidentCard}>
+        <Text style={styles.cardTitle}>Open Incidents</Text>
+
+        {openIncidents.length === 0 ? (
+          <Text style={styles.cardText}>
+            No unclaimed incidents available.
+          </Text>
+        ) : (
+          openIncidents.map((incident) => (
+            <View key={incident.id} style={styles.incident}>
+              <Text style={styles.incidentType}>
+                {incident.incident_type}
+              </Text>
+
+              <Text style={styles.incidentInfo}>
+                Priority: {incident.priority}
+              </Text>
+
+              <Text style={styles.incidentInfo}>
+                Location: {incident.location}
+              </Text>
+
+              <Text style={styles.incidentInfo}>
+                Caller: {incident.caller_name}
+              </Text>
+
+              <Text style={styles.incidentInfo}>
+                Status: DISPATCHED
+              </Text>
+
+              <Text style={styles.incidentDescription}>
+                {incident.description}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.claimButton}
+                onPress={() => claimIncident(incident.id)}
+              >
                 <Text style={styles.claimButtonText}>
                   Claim Incident
                 </Text>
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
           ))
         )}
       </View>
@@ -306,6 +394,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     padding: 20,
     borderRadius: 12,
+    marginBottom: 16,
   },
 
   cardTitle: {

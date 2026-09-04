@@ -48,13 +48,24 @@ export default async function ProtectedPage() {
     )
     .order("created_at", { ascending: false });
 
+  // Get incident reports
+  const { data: reports, error: reportsError } = await supabase
+    .from("incident_reports")
+    .select(
+      "id, incident_id, officer_id, summary, outcome, resolved_at"
+    )
+    .order("resolved_at", { ascending: false });
+
   return (
     <main className="flex-1 w-full p-6">
       <IncidentRealtime />
-      
+
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">MiniCAD Dispatcher Dashboard</h1>
+        <h1 className="text-3xl font-bold">
+          MiniCAD Dispatcher Dashboard
+        </h1>
+
         <p className="mt-2 text-muted-foreground">
           Welcome, {profile.full_name}
         </p>
@@ -62,7 +73,9 @@ export default async function ProtectedPage() {
 
       {/* Officers */}
       <section className="mb-8">
-        <h2 className="mb-4 text-2xl font-semibold">Officers</h2>
+        <h2 className="mb-4 text-2xl font-semibold">
+          Officers
+        </h2>
 
         {officersError ? (
           <p className="text-red-500">
@@ -82,7 +95,9 @@ export default async function ProtectedPage() {
                 <p className="mt-2 text-sm">
                   Status:{" "}
                   <span className="font-medium">
-                    {officer.on_duty ? "On Duty" : "Off Duty"}
+                    {officer.on_duty
+                      ? "On Duty"
+                      : "Off Duty"}
                   </span>
                 </p>
               </div>
@@ -102,12 +117,12 @@ export default async function ProtectedPage() {
             Incidents
           </h2>
 
-      <Link
+          <Link
             href="/protected/incidents/new"
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
           >
             Create Incident
-      </Link>
+          </Link>
         </div>
 
         {incidentsError ? (
@@ -116,47 +131,102 @@ export default async function ProtectedPage() {
           </p>
         ) : incidents && incidents.length > 0 ? (
           <div className="space-y-4">
-            {incidents.map((incident) => (
-              <div
-                key={incident.id}
-                className="rounded-lg border p-4"
-              >
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <h3 className="font-semibold">
-                      {incident.incident_type}
-                    </h3>
+            {incidents.map((incident) => {
+              const report = reports?.find(
+                (item) => item.incident_id === incident.id
+              );
 
-                    <p className="text-sm text-muted-foreground">
-                      {incident.location}
-                    </p>
+              const officer = officers?.find(
+                (item) => item.id === report?.officer_id
+              );
+
+              return (
+                <div
+                  key={incident.id}
+                  className="rounded-lg border p-4"
+                >
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h3 className="font-semibold">
+                        {incident.incident_type}
+                      </h3>
+
+                      <p className="text-sm text-muted-foreground">
+                        {incident.location}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2 text-sm">
+                      <span className="rounded border px-2 py-1">
+                        {incident.priority}
+                      </span>
+
+                      <span className="rounded border px-2 py-1">
+                        {incident.status}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex gap-2 text-sm">
-                    <span className="rounded border px-2 py-1">
-                      {incident.priority}
-                    </span>
+                  <p className="mt-3 text-sm">
+                    {incident.description}
+                  </p>
 
-                    <span className="rounded border px-2 py-1">
-                      {incident.status}
-                    </span>
-                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Caller: {incident.caller_name}
+                  </p>
+
+                  {incident.status === "new" && (
+                    <div className="mt-4">
+                      <DispatchButton
+                        incidentId={incident.id}
+                      />
+                    </div>
+                  )}
+
+                  {/* Incident Report */}
+                  {report && (
+                    <div className="mt-5 rounded-lg border bg-muted/30 p-4">
+                      <h4 className="mb-3 font-semibold">
+                        Incident Report
+                      </h4>
+
+                      <div className="space-y-2 text-sm">
+                        <p>
+                          <span className="font-medium">
+                            Officer:
+                          </span>{" "}
+                          {officer?.full_name ??
+                            "Unknown officer"}
+                        </p>
+
+                        <p>
+                          <span className="font-medium">
+                            Summary:
+                          </span>{" "}
+                          {report.summary}
+                        </p>
+
+                        <p>
+                          <span className="font-medium">
+                            Outcome:
+                          </span>{" "}
+                          {report.outcome}
+                        </p>
+
+                        <p>
+                          <span className="font-medium">
+                            Time Resolved:
+                          </span>{" "}
+                          {new Date(
+                            report.resolved_at
+                          ).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                <p className="mt-3 text-sm">
-                  {incident.description}
-                </p>
-
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Caller: {incident.caller_name}
-                </p>
-                {incident.status === "new" && (
-                <div className="mt-4">
-                   <DispatchButton incidentId={incident.id} />
-                </div>
-            )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="rounded-lg border p-6 text-center">
@@ -166,6 +236,12 @@ export default async function ProtectedPage() {
           </div>
         )}
       </section>
+
+      {reportsError && (
+        <p className="mt-4 text-sm text-red-500">
+          Unable to load incident reports.
+        </p>
+      )}
     </main>
   );
 }

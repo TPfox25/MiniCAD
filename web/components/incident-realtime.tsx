@@ -8,13 +8,24 @@ export default function IncidentRealtime() {
     const supabase = createClient();
 
     const channel = supabase
-      .channel("incidents-realtime")
+      .channel("minicad-realtime")
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "incidents",
+        },
+        () => {
+          window.location.reload();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "incident_reports",
         },
         () => {
           window.location.reload();
