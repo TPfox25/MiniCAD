@@ -9,6 +9,8 @@ export default function IncidentRealtime() {
 
     const channel = supabase
       .channel("minicad-realtime")
+
+      // Incident changes
       .on(
         "postgres_changes",
         {
@@ -20,6 +22,8 @@ export default function IncidentRealtime() {
           window.location.reload();
         }
       )
+
+      // Incident report changes
       .on(
         "postgres_changes",
         {
@@ -31,6 +35,20 @@ export default function IncidentRealtime() {
           window.location.reload();
         }
       )
+
+      // Officer profile changes
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "profiles",
+        },
+        () => {
+          window.location.reload();
+        }
+      )
+
       .subscribe();
 
     return () => {

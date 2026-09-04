@@ -85,25 +85,46 @@ export default async function ProtectedPage() {
           </p>
         ) : officers && officers.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2">
-            {officers.map((officer) => (
-              <div
-                key={officer.id}
-                className="rounded-lg border p-4"
-              >
-                <h3 className="font-semibold">
-                  {officer.full_name}
-                </h3>
+            {officers.map((officer) => {
+              const activeIncident = incidents?.find(
+                (incident) =>
+                  incident.claimed_by === officer.id &&
+                  incident.status !== "resolved"
+              );
 
-                <p className="mt-2 text-sm">
-                  Status:{" "}
-                  <span className="font-medium">
-                    {officer.on_duty
-                      ? "On Duty"
-                      : "Off Duty"}
-                  </span>
-                </p>
-              </div>
-            ))}
+              let officerStatus = "Off Duty / Not Logged In";
+
+              if (officer.on_duty) {
+                officerStatus = activeIncident
+                  ? "Responding"
+                  : "Available";
+              }
+
+              return (
+                <div
+                  key={officer.id}
+                  className="rounded-lg border p-4"
+                >
+                  <h3 className="font-semibold">
+                    {officer.full_name}
+                  </h3>
+
+                  <p className="mt-2 text-sm">
+                    Status:{" "}
+                    <span className="font-medium">
+                      {officerStatus}
+                    </span>
+                  </p>
+
+                  {activeIncident && (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Current Incident:{" "}
+                      {activeIncident.incident_type}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="text-muted-foreground">
