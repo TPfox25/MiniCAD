@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
+import { registerForPushNotifications } from '@/lib/notification';
 
 type Incident = {
   id: number;
@@ -162,6 +163,11 @@ export default function DashboardScreen() {
     }
 
     setOnDuty(newStatus);
+
+    if (newStatus) {
+     await registerForPushNotifications();
+    }
+
     setUpdating(false);
   }
 
