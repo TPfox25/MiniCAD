@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 type DispatchButtonProps = {
   incidentId: number;
@@ -18,44 +17,34 @@ export default function DispatchButton({
     setError(null);
 
     try {
-      const supabase = createClient();
+      const response = await fetch("/api/dispatch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          incidentId,
+        }),
+      });
 
-      const { error } = await supabase
-        .from("incidents")
-        .update({
-          status: "dispatched",
-        })
-        .eq("id", incidentId)
-        .eq("status", "new");
+      const result = await response.json();
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        throw new Error(
+          result.error || "Unable to dispatch incident."
+        );
       }
 
       window.location.reload();
     } catch (error: unknown) {
-  console.error("Dispatch error:", error);
+      console.error("Dispatch error:", error);
 
-  if (error && typeof error === "object") {
-    const supabaseError = error as {
-      message?: string;
-      code?: string;
-      details?: string;
-      hint?: string;
-    };
-
-    console.error("Message:", supabaseError.message);
-    console.error("Code:", supabaseError.code);
-    console.error("Details:", supabaseError.details);
-    console.error("Hint:", supabaseError.hint);
-
-    setError(
-      supabaseError.message || "Unable to dispatch incident."
-    );
-  } else {
-    setError("Unable to dispatch incident.");
-  }
-} finally {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("Unable to dispatch incident.");
+      }
+    } finally {
       setIsLoading(false);
     }
   }
