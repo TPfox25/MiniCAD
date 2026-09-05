@@ -90,7 +90,9 @@ A simple history view for the dispatcher of past resolved incidents and their re
 Create a .env.local file inside the web folder:
 
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_key
+
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 
@@ -99,6 +101,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 Create a .env file inside the mobile folder:
 
 EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+
 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_key
 
 
@@ -123,5 +126,6 @@ EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_key
 - cd MiniCAD/mobile
 - npm install
 - npx expo start
+- npm start
 
 **NB: Use Expo to open the application on an Android emulator or physical Android device for full testing.**
