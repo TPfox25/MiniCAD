@@ -62,35 +62,11 @@ The dispatcher can then dispatch the incident to the available on-duty officer p
 
 The overall creation flow is:
 
-Dispatcher
-    ↓
-Create Incident
-    ↓
-Enter Incident Details
-    ↓
-Save to Supabase
-    ↓
-Status: New
-    ↓
-Dispatch Incident
-    ↓
-Status: Dispatched
-    ↓
-Officer Receives Notification
+Dispatcher -> Create Incident -> Enter Incident Details -> Save to Supabase ->Status: New -> Dispatch Incident -> Status: Dispatched -> Officer Receives Notification
 
 ## 4. Incident Status Flow
 
-New
-  ↓
-Dispatched
-  ↓
-Claimed
-  ↓
-En Route
-  ↓
-On Scene
-  ↓
-Resolved (Report Submitted)
+New -> Dispatched -> Claimed -> En Route -> On Scene -> Resolved (Report Submitted)
 
 
 ## 5. Known Limitations / Shortcuts
@@ -101,8 +77,8 @@ Resolved (Report Submitted)
 
 - I had to cut out the optional functionality since I was focused on the main functionality, however if I had more time, I would have implemented this functionality:
 
-• Basic incident priority sorting/filtering on the dispatcher queue.
-• A simple history view for the dispatcher of past resolved incidents and their reports.
+Basic incident priority sorting/filtering on the dispatcher queue.
+A simple history view for the dispatcher of past resolved incidents and their reports.
 
 - The current push_tokens table stores one current push-token record per user. A production implementation could support multiple devices per officer.
 
@@ -113,7 +89,6 @@ Resolved (Report Submitted)
 
 Create a .env.local file inside the web folder:
 
-**.env**
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
@@ -123,7 +98,6 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 Create a .env file inside the mobile folder:
 
-**.env**
 EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_key
 
