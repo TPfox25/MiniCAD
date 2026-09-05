@@ -32,11 +32,14 @@ export default function IncidentDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
+  const [onDuty, setOnDuty] = useState(false);
+
   const [summary, setSummary] = useState('');
   const [outcome, setOutcome] = useState('');
 
   useEffect(() => {
     loadIncident();
+    loadDutyStatus();
 
     const incidentChannel = supabase
       .channel(`incident-${id}`)
@@ -78,6 +81,32 @@ export default function IncidentDetailScreen() {
     setLoading(false);
   }
 
+  async function loadDutyStatus() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('on_duty')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      console.log(
+        'Unable to load duty status:',
+        error.message
+      );
+      return;
+    }
+
+    setOnDuty(data.on_duty);
+  }
+
   async function updateStatus(newStatus: string) {
     if (!incident) {
       return;
@@ -94,7 +123,10 @@ export default function IncidentDetailScreen() {
     );
 
     if (error) {
-      Alert.alert('Unable to update incident', error.message);
+      Alert.alert(
+        'Unable to update incident',
+        error.message
+      );
       setUpdating(false);
       return;
     }
@@ -138,7 +170,10 @@ export default function IncidentDetailScreen() {
     );
 
     if (error) {
-      Alert.alert('Unable to submit report', error.message);
+      Alert.alert(
+        'Unable to submit report',
+        error.message
+      );
       setUpdating(false);
       return;
     }
@@ -189,7 +224,9 @@ export default function IncidentDetailScreen() {
           style={styles.button}
           onPress={() => router.back()}
         >
-          <Text style={styles.buttonText}>Go Back</Text>
+          <Text style={styles.buttonText}>
+            Go Back
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -201,10 +238,14 @@ export default function IncidentDetailScreen() {
         style={styles.backButton}
         onPress={() => router.back()}
       >
-        <Text style={styles.backButtonText}>← Back</Text>
+        <Text style={styles.backButtonText}>
+          ← Back
+        </Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>Incident Details</Text>
+      <Text style={styles.title}>
+        Incident Details
+      </Text>
 
       <View style={styles.card}>
         <Text style={styles.incidentType}>
@@ -212,27 +253,51 @@ export default function IncidentDetailScreen() {
         </Text>
 
         <View style={styles.statusContainer}>
-          <Text style={styles.statusLabel}>Status</Text>
+          <Text style={styles.statusLabel}>
+            Status
+          </Text>
 
           <Text style={styles.statusValue}>
-            {incident.status.replace('_', ' ').toUpperCase()}
+            {incident.status
+              .replace('_', ' ')
+              .toUpperCase()}
           </Text>
         </View>
 
-        <Text style={styles.label}>Priority</Text>
-        <Text style={styles.value}>{incident.priority}</Text>
+        <Text style={styles.label}>
+          Priority
+        </Text>
+        <Text style={styles.value}>
+          {incident.priority}
+        </Text>
 
-        <Text style={styles.label}>Caller</Text>
-        <Text style={styles.value}>{incident.caller_name}</Text>
+        <Text style={styles.label}>
+          Caller
+        </Text>
+        <Text style={styles.value}>
+          {incident.caller_name}
+        </Text>
 
-        <Text style={styles.label}>Phone</Text>
-        <Text style={styles.value}>{incident.caller_phone}</Text>
+        <Text style={styles.label}>
+          Phone
+        </Text>
+        <Text style={styles.value}>
+          {incident.caller_phone}
+        </Text>
 
-        <Text style={styles.label}>Location</Text>
-        <Text style={styles.value}>{incident.location}</Text>
+        <Text style={styles.label}>
+          Location
+        </Text>
+        <Text style={styles.value}>
+          {incident.location}
+        </Text>
 
-        <Text style={styles.label}>Description</Text>
-        <Text style={styles.value}>{incident.description}</Text>
+        <Text style={styles.label}>
+          Description
+        </Text>
+        <Text style={styles.value}>
+          {incident.description}
+        </Text>
       </View>
 
       <View style={styles.card}>
@@ -242,24 +307,34 @@ export default function IncidentDetailScreen() {
 
         {incident.status === 'claimed' && (
           <TouchableOpacity
-            style={styles.button}
+            style={[
+              styles.button,
+              !onDuty && styles.disabledButton,
+            ]}
             onPress={() => updateStatus('en_route')}
-            disabled={updating}
+            disabled={updating || !onDuty}
           >
             <Text style={styles.buttonText}>
-              {updating ? 'Updating...' : 'Mark En Route'}
+              {updating
+                ? 'Updating...'
+                : 'Mark En Route'}
             </Text>
           </TouchableOpacity>
         )}
 
         {incident.status === 'en_route' && (
           <TouchableOpacity
-            style={styles.button}
+            style={[
+              styles.button,
+              !onDuty && styles.disabledButton,
+            ]}
             onPress={() => updateStatus('on_scene')}
-            disabled={updating}
+            disabled={updating || !onDuty}
           >
             <Text style={styles.buttonText}>
-              {updating ? 'Updating...' : 'Mark On Scene'}
+              {updating
+                ? 'Updating...'
+                : 'Mark On Scene'}
             </Text>
           </TouchableOpacity>
         )}
@@ -416,6 +491,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 12,
+  },
+
+  disabledButton: {
+    backgroundColor: '#cccccc',
   },
 
   buttonText: {

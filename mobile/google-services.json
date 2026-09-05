@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1000587787524",
+    "project_id": "minicad-d23dc",
+    "storage_bucket": "minicad-d23dc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1000587787524:android:1647e6aa045c230cfaa451",
+        "android_client_info": {
+          "package_name": "com.tafton.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdAfvPAturRQApHq3GaSPN64aaS1AbNZk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

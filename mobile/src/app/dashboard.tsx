@@ -30,6 +30,7 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     loadOfficerStatus();
@@ -50,8 +51,8 @@ export default function DashboardScreen() {
           } = await supabase.auth.getUser();
 
           if (user && payload.new.id === user.id) {
-              setOnDuty(payload.new.on_duty);
-              loadIncidents();
+            setOnDuty(payload.new.on_duty);
+            loadIncidents();
           }
         }
       )
@@ -106,53 +107,54 @@ export default function DashboardScreen() {
     setLoading(false);
   }
 
- async function loadIncidents() {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  async function loadIncidents() {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-  if (userError || !user) {
-    return;
+    if (userError || !user) {
+      return;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('on_duty')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      Alert.alert('Error', profileError.message);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('incidents')
+      .select(
+        'id, caller_name, location, incident_type, priority, description, status, claimed_by'
+      )
+      .or(`status.eq.dispatched,claimed_by.eq.${user.id}`)
+      .neq('status', 'resolved')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      Alert.alert('Error', error.message);
+      return;
+    }
+
+    const visibleIncidents = (data ?? []).filter((incident) => {
+      const isMyIncident = incident.claimed_by === user.id;
+
+      const isOpenIncident =
+        incident.status === 'dispatched' &&
+        (incident.claimed_by === null ||
+          incident.claimed_by === undefined);
+
+      return isMyIncident || (profile.on_duty && isOpenIncident);
+    });
+
+    setIncidents(visibleIncidents);
   }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('on_duty')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError) {
-    Alert.alert('Error', profileError.message);
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from('incidents')
-    .select(
-      'id, caller_name, location, incident_type, priority, description, status, claimed_by'
-    )
-    .or(`status.eq.dispatched,claimed_by.eq.${user.id}`)
-    .neq('status', 'resolved')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    Alert.alert('Error', error.message);
-    return;
-  }
-
-  const visibleIncidents = (data ?? []).filter((incident) => {
-    const isMyIncident = incident.claimed_by === user.id;
-    const isOpenIncident =
-      incident.status === 'dispatched' &&
-      (incident.claimed_by === null ||
-        incident.claimed_by === undefined);
-
-    return isMyIncident || (profile.on_duty && isOpenIncident);
-  });
-
-  setIncidents(visibleIncidents);
-}
 
   async function toggleDutyStatus() {
     setUpdating(true);
@@ -187,7 +189,7 @@ export default function DashboardScreen() {
     setOnDuty(newStatus);
 
     if (newStatus) {
-     await registerForPushNotifications();
+      await registerForPushNotifications();
     }
 
     setUpdating(false);
@@ -230,15 +232,36 @@ export default function DashboardScreen() {
     });
   }
 
+  async function handleLogout() {
+    setLoggingOut(true);
+
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      Alert.alert('Logout Error', error.message);
+      setLoggingOut(false);
+      return;
+    }
+
+    setLoggingOut(false);
+
+    router.replace('/');
+  }
+
   const activeIncidents = incidents.filter(
-    (incident) => incident.claimed_by !== null && incident.claimed_by !== undefined
+    (incident) =>
+      incident.claimed_by !== null &&
+      incident.claimed_by !== undefined
   );
 
-  const openIncidents = incidents.filter(
-    (incident) =>
-      incident.status === 'dispatched' &&
-      (incident.claimed_by === null || incident.claimed_by === undefined)
-  );
+  const openIncidents = onDuty
+    ? incidents.filter(
+        (incident) =>
+          incident.status === 'dispatched' &&
+          (incident.claimed_by === null ||
+            incident.claimed_by === undefined)
+      )
+    : [];
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -260,7 +283,7 @@ export default function DashboardScreen() {
             <TouchableOpacity
               style={styles.button}
               onPress={toggleDutyStatus}
-              disabled={updating}
+              disabled={updating || loggingOut}
             >
               <Text style={styles.buttonText}>
                 {updating
@@ -306,8 +329,12 @@ export default function DashboardScreen() {
               </Text>
 
               <TouchableOpacity
-                style={styles.claimButton}
+                style={[
+                  styles.claimButton,
+                  !onDuty && styles.disabledButton,
+                ]}
                 onPress={() => openIncident(incident.id)}
+                disabled={!onDuty}
               >
                 <Text style={styles.claimButtonText}>
                   Update Status
@@ -364,6 +391,16 @@ export default function DashboardScreen() {
           ))
         )}
       </View>
+
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={handleLogout}
+        disabled={loggingOut || updating}
+      >
+        <Text style={styles.logoutButtonText}>
+          {loggingOut ? 'Logging Out...' : 'Logout'}
+        </Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -467,9 +504,28 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 
+  disabledButton: {
+    backgroundColor: '#cccccc',
+  },
+
   claimButtonText: {
     color: '#ffffff',
     fontSize: 15,
+    fontWeight: 'bold',
+  },
+
+  logoutButton: {
+    backgroundColor: '#8b0000',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 30,
+  },
+
+  logoutButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });
