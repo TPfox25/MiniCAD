@@ -50,7 +50,8 @@ export default function DashboardScreen() {
           } = await supabase.auth.getUser();
 
           if (user && payload.new.id === user.id) {
-            setOnDuty(payload.new.on_duty);
+              setOnDuty(payload.new.on_duty);
+              loadIncidents();
           }
         }
       )
@@ -105,32 +106,53 @@ export default function DashboardScreen() {
     setLoading(false);
   }
 
-  async function loadIncidents() {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+ async function loadIncidents() {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-    if (userError || !user) {
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('incidents')
-      .select(
-        'id, caller_name, location, incident_type, priority, description, status, claimed_by'
-      )
-      .or(`status.eq.dispatched,claimed_by.eq.${user.id}`)
-      .neq('status', 'resolved')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      Alert.alert('Error', error.message);
-      return;
-    }
-
-    setIncidents(data ?? []);
+  if (userError || !user) {
+    return;
   }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('on_duty')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError) {
+    Alert.alert('Error', profileError.message);
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('incidents')
+    .select(
+      'id, caller_name, location, incident_type, priority, description, status, claimed_by'
+    )
+    .or(`status.eq.dispatched,claimed_by.eq.${user.id}`)
+    .neq('status', 'resolved')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    Alert.alert('Error', error.message);
+    return;
+  }
+
+  const visibleIncidents = (data ?? []).filter((incident) => {
+    const isMyIncident = incident.claimed_by === user.id;
+    const isOpenIncident =
+      incident.status === 'dispatched' &&
+      (incident.claimed_by === null ||
+        incident.claimed_by === undefined);
+
+    return isMyIncident || (profile.on_duty && isOpenIncident);
+  });
+
+  setIncidents(visibleIncidents);
+}
 
   async function toggleDutyStatus() {
     setUpdating(true);
